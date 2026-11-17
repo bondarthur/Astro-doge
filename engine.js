@@ -1,5 +1,3 @@
-'use strict';
-/* ---------------- state ---------------- */
 let state = 'title', t = 0, score = 0, nextBonus = 90, bonusT = 0;
 let phaseMsg = '', phaseT = 0, prevPhase = 0;
 let invul = 0, overT = 0, newBest = false, best = 0;
@@ -28,6 +26,28 @@ addEventListener('keydown', e => {
   if (e.key === 'm' || e.key === 'M') muted = !muted;
 });
 addEventListener('keyup', e => { keys[e.key] = false; });
+
+/* ---------------- touch controls ---------------- */
+let touchX = 0, touchY = 0, touchActive = false;
+function canvasPos(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
+}
+cv.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (state === 'title' || (state === 'over' && overT > 0.6)) { start(); return; }
+  const p = canvasPos(e.touches[0]);
+  touchX = p.x; touchY = p.y - 34; touchActive = true;
+}, { passive: false });
+cv.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const p = canvasPos(e.touches[0]);
+  touchX = p.x; touchY = p.y - 34;
+}, { passive: false });
+cv.addEventListener('touchend', e => {
+  e.preventDefault();
+  touchActive = false;
+}, { passive: false });
 
 /* ---------------- spawning ---------------- */
 function pickType(tt) {
@@ -121,6 +141,11 @@ function update(dt) {
     if (keys.ArrowRight) { px += PS; moving = true; }
     if (keys.ArrowUp) { py -= PS; moving = true; }
     if (keys.ArrowDown) { py += PS; moving = true; }
+    if (touchActive) {
+      px += (touchX - px) * Math.min(1, dt * 14);
+      py += (touchY - py) * Math.min(1, dt * 14);
+      if (Math.abs(touchX - px) > 1.5 || Math.abs(touchY - py) > 1.5) moving = true;
+    }
     px = clamp(px, 8, W - 8); py = clamp(py, H * 0.3, H - 14);
     frameT += moving ? dt * 8 : dt * 2;
     if (moving && Math.random() < 0.5) {
@@ -215,7 +240,8 @@ function draw() {
     text('ARROW KEYS TO MOVE', W / 2, 232, 8, '#cfd3ff', 'center');
     text('DODGE THE GALAXY', W / 2, 246, 8, '#7a80a8', 'center');
     text('+1,000,000 EVERY 1:30', W / 2, 260, 8, '#ffd24a', 'center');
-    if (Math.floor(timeAbs * 2) % 2 === 0) text('PRESS ENTER TO START', W / 2, 296, 9, '#ffffff', 'center', true);
+    text('ON TOUCH: DRAG TO MOVE', W / 2, 274, 7, '#7a80a8', 'center');
+    if (Math.floor(timeAbs * 2) % 2 === 0) text('PRESS ENTER OR TAP TO START', W / 2, 296, 9, '#ffffff', 'center', true);
     text('M: SOUND ' + (muted ? 'OFF' : 'ON') + '   BEST ' + best, W / 2, 330, 7, '#7a80a8', 'center');
   }
 
@@ -227,7 +253,7 @@ function draw() {
     text('TIME ' + fmtTime(t), W / 2, 168, 10, '#cfd3ff', 'center');
     if (newBest) text('NEW BEST!', W / 2, 186, 9, '#ffd24a', 'center', true);
     else text('BEST ' + best, W / 2, 186, 9, '#7a80a8', 'center');
-    if (Math.floor(timeAbs * 2) % 2 === 0) text('PRESS ENTER TO RETRY', W / 2, 240, 9, '#ffffff', 'center', true);
+    if (Math.floor(timeAbs * 2) % 2 === 0) text('TAP OR PRESS ENTER TO RETRY', W / 2, 240, 9, '#ffffff', 'center', true);
   }
 }
 
