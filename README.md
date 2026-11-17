@@ -3,7 +3,8 @@
 A minimal retro 90's-style pixel web game. Open `index.html` in any browser — no build, no dependencies.
 
 ## How to play
-- **Arrow keys**: move the astronaut
+- **Arrow keys**: move the astronaut (laptop/desktop)
+- **Touch**: drag anywhere to move — the astronaut follows your finger (phones/tablets); tap to start/retry
 - **Enter / Space**: start or retry
 - **M**: toggle sound
 
