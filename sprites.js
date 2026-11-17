@@ -20,6 +20,7 @@ fit();
 let AC = null, muted = false;
 function actx() {
   if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (AC && AC.state === 'suspended') AC.resume();
   return AC;
 }
 function beep(f, d, type, v, slide) {
