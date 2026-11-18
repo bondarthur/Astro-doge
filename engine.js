@@ -5,6 +5,7 @@ try { best = +localStorage.getItem('astroBest') || 0; } catch (e) {}
 let px = W / 2, py = H - 60, frameT = 0, moving = false;
 let objs = [], parts = [], spawnTimer = 0, timeAbs = 0;
 let eggs = [], eggT = 0, eggMsg = '';
+let floats = [], gemTimer = 3;
 
 function phaseOf(t) { return t < 150 ? 1 : t < 240 ? 2 : 3; }
 function phaseName(p) { return p === 1 ? 'DRIFT' : p === 2 ? 'STORM' : 'CHAOS'; }
@@ -37,8 +38,9 @@ function canvasPos(e) {
 }
 cv.addEventListener('touchstart', e => {
   e.preventDefault();
-  if (state === 'title' || (state === 'over' && overT > 0.6)) { start(); return; }
   const p = canvasPos(e.touches[0]);
+  if (p.x >= W - 16 && p.y <= 14) { muted = !muted; return; }
+  if (state === 'title' || (state === 'over' && overT > 0.6)) { start(); return; }
   touchX = p.x; touchY = p.y - TOUCH_OFF; touchActive = true;
 }, { passive: false });
 cv.addEventListener('touchmove', e => {
@@ -50,6 +52,10 @@ cv.addEventListener('touchend', e => {
   e.preventDefault();
   touchActive = false;
 }, { passive: false });
+cv.addEventListener('click', e => {
+  const p = canvasPos(e);
+  if (p.x >= W - 16 && p.y <= 14) muted = !muted;
+});
 
 /* ---------------- spawning ---------------- */
 function pickType(tt) {
@@ -99,12 +105,22 @@ function explode(x, y) {
 
 /* ---------------- easter eggs ---------------- */
 function spawnEgg(e) {
-  objs.push({ type: 'egg', name: e.name, x: rand(30, W - 30), y: -40, vx: rand(-6, 6), vy: rand(0.5, 0.65), r: e.r, spr: e.spr, wob: 0 });
+  objs.push({ type: 'egg', value: e.value, name: e.name, x: rand(30, W - 30), y: -40, vx: rand(-6, 6), vy: rand(0.5, 0.65), r: e.r, spr: e.spr, wob: 0 });
 }
 function rollEggs() {
   eggs = [];
   if (Math.random() < 0.5) eggs.push(Object.assign({ at: rand(25, 200) }, EGGS_A[irand(0, EGGS_A.length - 1)]));
   if (Math.random() < 0.05) eggs.push(Object.assign({ at: rand(40, 240) }, EGGS_B[irand(0, EGGS_B.length - 1)]));
+}
+
+/* ---------------- collectibles ---------------- */
+function spawnGem() {
+  objs.push({ type: 'gem', value: 200000, x: rand(14, W - 14), y: -12, vx: rand(-8, 8), vy: rand(0.6, 0.9), r: 4.5, spr: GEMS[irand(0, GEMS.length - 1)], wob: 0 });
+}
+function collect(o) {
+  score += o.value;
+  floats.push({ x: o.x, y: o.y, txt: '+' + o.value.toLocaleString('en-US'), life: 1.3, col: o.value >= 2000000 ? '#ffd24a' : '#7aff9a' });
+  if (o.value >= 2000000) sfx.bonus(); else sfx.pickup();
 }
 
 /* ---------------- flow ---------------- */
@@ -114,13 +130,16 @@ function start() {
   invul = 1.5; overT = 0; newBest = false;
   px = W / 2; py = H - 60;
   objs = []; parts = []; spawnTimer = 0.5;
+  gemTimer = 2.5; floats = [];
   eggT = 0; eggMsg = '';
   rollEggs();
+  startMusic();
   actx(); sfx.start();
 }
 function die() {
   explode(px, py);
   state = 'over'; overT = 0;
+  stopMusic();
   sfx.die();
   if (Math.floor(score) > best) {
     best = Math.floor(score); newBest = true;
@@ -141,6 +160,11 @@ function update(dt) {
   if (bonusT > 0) bonusT -= dt;
   if (phaseT > 0) phaseT -= dt;
   if (eggT > 0) eggT -= dt;
+  for (let i = floats.length - 1; i >= 0; i--) {
+    const f = floats[i];
+    f.y -= 18 * dt; f.life -= dt;
+    if (f.life <= 0) floats.splice(i, 1);
+  }
 
   if (state === 'play') {
     t += dt;
@@ -153,6 +177,8 @@ function update(dt) {
         eggs.splice(i, 1);
       }
     }
+    gemTimer -= dt;
+    if (gemTimer <= 0) { gemTimer = rand(2.5, 5); spawnGem(); }
     const ph = phaseOf(t);
     if (ph !== prevPhase) { prevPhase = ph; phaseMsg = phaseName(ph); phaseT = 2; sfx.phase(); }
     if (invul > 0) invul -= dt;
@@ -184,7 +210,9 @@ function update(dt) {
       else o.x += o.vx * dt;
       if (o.y > H + 50) { objs.splice(i, 1); continue; }
       const dx = o.x - px, dy = o.y - py, rr = o.r + 4;
-      if (invul <= 0 && dx * dx + dy * dy < rr * rr) { die(); break; }
+      const hit = dx * dx + dy * dy < rr * rr;
+      if (hit && (o.type === 'gem' || o.type === 'egg')) { collect(o); objs.splice(i, 1); continue; }
+      if (hit && invul <= 0) { die(); break; }
     }
   } else if (state === 'over') {
     overT += dt;
@@ -224,6 +252,14 @@ function draw() {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(Math.round(o.x), Math.round(o.y), 1, 1);
     } else {
+      if (o.type === 'gem' || o.type === 'egg') {
+        ctx.globalAlpha = 0.35 + 0.25 * Math.sin(timeAbs * 6);
+        ctx.strokeStyle = '#3fff7a';
+        ctx.beginPath();
+        ctx.arc(o.x, o.y, o.r + 5, 0, 7);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
       ctx.drawImage(o.spr, Math.round(o.x - o.spr.width / 2), Math.round(o.y - o.spr.height / 2));
     }
   }
@@ -245,9 +281,15 @@ function draw() {
   }
   ctx.globalAlpha = 1;
 
+  for (const f of floats) {
+    ctx.globalAlpha = clamp(f.life, 0, 1);
+    text(f.txt, f.x, f.y, 9, f.col, 'center', true);
+  }
+  ctx.globalAlpha = 1;
+
   if (state === 'play' || state === 'over') {
     text('SCORE ' + String(Math.floor(score)).padStart(8, '0'), 4, 4, 8, '#cfd3ff');
-    text(fmtTime(t), W - 4, 4, 8, '#cfd3ff', 'right');
+    text(fmtTime(t), W - 18, 4, 8, '#cfd3ff', 'right');
     text('PHASE ' + phaseOf(t) + ': ' + phaseName(phaseOf(t)), W / 2, 16, 7, '#7a80a8', 'center');
     if (bonusT > 0) {
       ctx.fillStyle = 'rgba(255,255,255,' + (bonusT * 0.12) + ')';
@@ -260,6 +302,17 @@ function draw() {
     if (eggT > 0) {
       text(eggMsg + '?!', W / 2, H * 0.58, 10, '#7aff9a', 'center', true);
     }
+  }
+
+  ctx.drawImage(speakerSpr, W - 13, 4);
+  if (!muted) {
+    ctx.fillStyle = '#cfd3ff';
+    ctx.fillRect(W - 5, 5, 1, 1);
+    ctx.fillRect(W - 5, 7, 1, 1);
+    ctx.fillRect(W - 6, 6, 1, 1);
+  } else {
+    ctx.fillStyle = '#ff5a5a';
+    for (let i = 0; i < 9; i++) ctx.fillRect(W - 15 + i, 3 + i, 1, 1);
   }
 
   if (state === 'title') {
