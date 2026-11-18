@@ -38,12 +38,12 @@ cv.addEventListener('touchstart', e => {
   e.preventDefault();
   if (state === 'title' || (state === 'over' && overT > 0.6)) { start(); return; }
   const p = canvasPos(e.touches[0]);
-  touchX = p.x; touchY = p.y - 34; touchActive = true;
+  touchX = p.x; touchY = p.y - 44; touchActive = true;
 }, { passive: false });
 cv.addEventListener('touchmove', e => {
   e.preventDefault();
   const p = canvasPos(e.touches[0]);
-  touchX = p.x; touchY = p.y - 34;
+  touchX = p.x; touchY = p.y - 44;
 }, { passive: false });
 cv.addEventListener('touchend', e => {
   e.preventDefault();
@@ -225,6 +225,11 @@ function draw() {
     } else {
       ctx.drawImage(o.spr, Math.round(o.x - o.spr.width / 2), Math.round(o.y - o.spr.height / 2));
     }
+  }
+
+  if (touchActive && state === 'play') {
+    ctx.fillStyle = 'rgba(140,220,255,0.55)';
+    ctx.fillRect(Math.round(touchX) - 1, Math.round(touchY + 44) - 1, 3, 3);
   }
 
   if (state === 'play' && (invul <= 0 || Math.floor(timeAbs * 10) % 2 === 0)) {
