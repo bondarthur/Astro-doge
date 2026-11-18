@@ -1,5 +1,6 @@
 'use strict';
-const W = 256, H = 384;
+const W = 256;
+const H = Math.max(384, Math.min(640, Math.round(256 * innerHeight / Math.max(1, innerWidth))));
 const cv = document.getElementById('game');
 const ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -9,9 +10,10 @@ const irand = (a, b) => Math.floor(rand(a, b + 1));
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 
 function fit() {
-  const s = Math.max(1, Math.floor(Math.min(innerWidth / W, innerHeight / H)));
-  cv.style.width = W * s + 'px';
-  cv.style.height = H * s + 'px';
+  let s = Math.min(innerWidth / W, innerHeight / H);
+  if (s >= 2) s = Math.floor(s);
+  cv.style.width = Math.round(W * s) + 'px';
+  cv.style.height = Math.round(H * s) + 'px';
 }
 addEventListener('resize', fit);
 fit();
@@ -110,6 +112,103 @@ const satSpr = sprite([
   'PPB..WWW..BPP',
   'PPB.......BPP'
 ], { P: '#3a5ac4', B: '#8f96ad', W: '#d8dce8' });
+
+/* ---------------- easter egg sprites ---------------- */
+const squirrelSpr = sprite([
+  '..TT........',
+  '.TTTT.......',
+  '.TTTTT..BB..',
+  'TTTTTTT.BBB.',
+  'TTTTTTT.BKB.',
+  '.TTTTTTBBBB.',
+  '..TTTTTBBBB.',
+  '...TTTTBBB..',
+  '....TTBBB...',
+  '.....BBBB...',
+  '....B.B.B...',
+  '....BB.BB...'
+], { T: '#8a5a2a', B: '#a5713d', K: '#1a1408' });
+const giraffeSpr = sprite([
+  '....Y..Y....',
+  '....YYYY....',
+  '....YKYY....',
+  '.....YY.....',
+  '.....YY.....',
+  '.....YY.....',
+  '....OYY.....',
+  '.....YY..O..',
+  '.....YYYY...',
+  '....YYYYYY..',
+  '....YOYOY...',
+  '....YYYYYY..',
+  '.....Y..Y...',
+  '....YY..YY..'
+], { Y: '#e0b84a', O: '#9a6a2a', K: '#2a2416' });
+const duckSpr = sprite([
+  '....YYY.....',
+  '...YYYYY....',
+  '...YKYYY....',
+  '...YYYYY....',
+  '....YYY.....',
+  '..DDDDDDD.D.',
+  '.DDDDDDDDDD.',
+  '.DDDDDDDDDD.',
+  '..DDDDDDDD..',
+  '...DDDDDD...'
+], { Y: '#f0d040', D: '#f0b020', K: '#1a1408' });
+const teslaSpr = sprite([
+  '......RRRR......',
+  '..RRRWWWWRRRR...',
+  '.HRRRRRRRRRRRR..',
+  '.RRRRRRRRRRRRR..',
+  '.RRRRRRRRRRRRRR.',
+  '..KKK......KKK..'
+], { R: '#d02818', W: '#cfe8ff', H: '#f0f0a0', K: '#1a1a22' });
+const issSpr = sprite([
+  'PPPP....GG....PPPP',
+  'PPPP...GGGG...PPPP',
+  'PPPP.PPPPPPPP.PPPP',
+  'PPPP...GGGG...PPPP',
+  'PPPP....GG....PPPP'
+], { P: '#3a5ac4', G: '#d8dce8' });
+const eiffelSpr = sprite([
+  '.....BB.....',
+  '.....BB.....',
+  '....BBBB....',
+  '....B..B....',
+  '....B..B....',
+  '....B..B....',
+  '...BB..BB...',
+  '...B....B...',
+  '...BBBBBB...',
+  '..BB....BB..',
+  '..B......B..',
+  '.BBB....BBB.',
+  '.B........B.',
+  '.B........B.',
+  'BB........BB'
+], { B: '#7a5a3a' });
+const alienSpr = sprite([
+  '...GGGGGG...',
+  '..GGGGGGGG..',
+  '.GGGGGGGGGG.',
+  '.GKKKGGKKKG.',
+  '.GKKKGGKKKG.',
+  '..GGGGGGGG..',
+  '...GGGGGG...'
+], { G: '#7ae07a', K: '#101410' });
+const EGGS_A = [
+  { name: 'A LOST ASTRONAUT', spr: astro2, r: 5 },
+  { name: 'A SPACE SQUIRREL', spr: squirrelSpr, r: 5.5 },
+  { name: 'A SPACE GIRAFFE', spr: giraffeSpr, r: 6 },
+  { name: 'A RUBBER DUCK', spr: duckSpr, r: 5 }
+];
+const EGGS_B = [
+  { name: 'A TESLA ROADSTER', spr: teslaSpr, r: 6.5 },
+  { name: 'THE ISS', spr: issSpr, r: 7 },
+  { name: 'THE EIFFEL TOWER', spr: eiffelSpr, r: 6 },
+  { name: 'AN ALIEN', spr: alienSpr, r: 5.5 }
+];
 
 /* ---------------- rock / planet generators ---------------- */
 function makeRock(size) {
