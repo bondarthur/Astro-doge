@@ -4,14 +4,15 @@ let invul = 0, overT = 0, newBest = false, best = 0;
 try { best = +localStorage.getItem('astroBest') || 0; } catch (e) {}
 let px = W / 2, py = H - 60, frameT = 0, moving = false;
 let objs = [], parts = [], spawnTimer = 0, timeAbs = 0;
+let eggs = [], eggT = 0, eggMsg = '';
 
-function phaseOf(t) { return t < 240 ? 1 : t < 540 ? 2 : 3; }
+function phaseOf(t) { return t < 150 ? 1 : t < 240 ? 2 : 3; }
 function phaseName(p) { return p === 1 ? 'DRIFT' : p === 2 ? 'STORM' : 'CHAOS'; }
 function diff(tt) {
   let speed, interval;
-  if (tt < 240) { const p = tt / 240; speed = 70 + p * 45; interval = 1.15 - p * 0.55; }
-  else if (tt < 540) { const p = (tt - 240) / 300; speed = 115 + p * 50; interval = 0.6 - p * 0.3; }
-  else { const p = Math.min(1, (tt - 540) / 300); speed = 165 + p * 70; interval = 0.3 - p * 0.12; }
+  if (tt < 150) { const p = tt / 150; speed = 70 + p * 45; interval = 1.15 - p * 0.55; }
+  else if (tt < 240) { const p = (tt - 150) / 90; speed = 115 + p * 50; interval = 0.6 - p * 0.3; }
+  else { const p = Math.min(1, (tt - 240) / 240); speed = 165 + p * 70; interval = 0.3 - p * 0.12; }
   return { speed, interval };
 }
 
@@ -52,10 +53,10 @@ cv.addEventListener('touchend', e => {
 /* ---------------- spawning ---------------- */
 function pickType(tt) {
   const w = [['rock', 5]];
-  if (tt > 50) w.push(['planet', 1.6]);
-  if (tt > 80) w.push(['comet', tt > 540 ? 3 : 1.8]);
-  if (tt > 240) w.push(['ufo', 1.2]);
-  if (tt > 540) w.push(['sat', 1.0]);
+  if (tt > 30) w.push(['planet', 1.6]);
+  if (tt > 45) w.push(['comet', tt > 240 ? 3 : 1.8]);
+  if (tt > 150) w.push(['ufo', 1.2]);
+  if (tt > 300) w.push(['sat', 1.0]);
   let tot = 0;
   for (const e of w) tot += e[1];
   let r = Math.random() * tot;
@@ -67,7 +68,7 @@ function spawnObj() {
   const type = pickType(tt);
   const o = { type, x: rand(12, W - 12), y: -40, vx: 0, vy: 0, r: 5, wob: 0 };
   if (type === 'rock') {
-    const s = irand(10, Math.min(34, 16 + Math.floor(tt / 60) * 2));
+    const s = irand(10, Math.min(34, 16 + Math.floor(tt / 45) * 2));
     o.spr = makeRock(s); o.r = s * 0.42;
     o.vy = rand(0.75, 1.25); o.vx = rand(-12, 12);
   } else if (type === 'planet') {
@@ -95,6 +96,16 @@ function explode(x, y) {
   }
 }
 
+/* ---------------- easter eggs ---------------- */
+function spawnEgg(e) {
+  objs.push({ type: 'egg', name: e.name, x: rand(30, W - 30), y: -40, vx: rand(-6, 6), vy: rand(0.5, 0.65), r: e.r, spr: e.spr, wob: 0 });
+}
+function rollEggs() {
+  eggs = [];
+  if (Math.random() < 0.5) eggs.push(Object.assign({ at: rand(25, 200) }, EGGS_A[irand(0, EGGS_A.length - 1)]));
+  if (Math.random() < 0.05) eggs.push(Object.assign({ at: rand(40, 240) }, EGGS_B[irand(0, EGGS_B.length - 1)]));
+}
+
 /* ---------------- flow ---------------- */
 function start() {
   state = 'play'; t = 0; score = 0; nextBonus = 90; bonusT = 0;
@@ -102,6 +113,8 @@ function start() {
   invul = 1.5; overT = 0; newBest = false;
   px = W / 2; py = H - 60;
   objs = []; parts = []; spawnTimer = 0.5;
+  eggT = 0; eggMsg = '';
+  rollEggs();
   actx(); sfx.start();
 }
 function die() {
@@ -126,11 +139,19 @@ function update(dt) {
   }
   if (bonusT > 0) bonusT -= dt;
   if (phaseT > 0) phaseT -= dt;
+  if (eggT > 0) eggT -= dt;
 
   if (state === 'play') {
     t += dt;
     score += dt * (100 + Math.floor(t / 30) * 25);
     if (t >= nextBonus) { score += 1000000; nextBonus += 90; bonusT = 2; sfx.bonus(); }
+    for (let i = eggs.length - 1; i >= 0; i--) {
+      if (t >= eggs[i].at) {
+        spawnEgg(eggs[i]);
+        eggMsg = eggs[i].name; eggT = 2.2; sfx.phase();
+        eggs.splice(i, 1);
+      }
+    }
     const ph = phaseOf(t);
     if (ph !== prevPhase) { prevPhase = ph; phaseMsg = phaseName(ph); phaseT = 2; sfx.phase(); }
     if (invul > 0) invul -= dt;
@@ -229,6 +250,9 @@ function draw() {
     }
     if (phaseT > 0) {
       text(phaseMsg + '!', W / 2, H * 0.5, 14, phaseMsg === 'CHAOS' ? '#ff5a5a' : '#8cd8ff', 'center', true);
+    }
+    if (eggT > 0) {
+      text(eggMsg + '?!', W / 2, H * 0.58, 10, '#7aff9a', 'center', true);
     }
   }
 
