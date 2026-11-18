@@ -41,8 +41,53 @@ const sfx = {
   start() { beep(440, .1, 'square', .1); setTimeout(() => beep(660, .15, 'square', .1), 100); },
   bonus() { beep(523, .12, 'square', .14); setTimeout(() => beep(659, .12, 'square', .14), 110); setTimeout(() => beep(784, .22, 'square', .14), 220); },
   phase() { beep(220, .15, 'square', .12); setTimeout(() => beep(220, .15, 'square', .12), 180); },
+  pickup() { beep(660, .08, 'square', .12); setTimeout(() => beep(990, .12, 'square', .12), 70); },
   die() { beep(300, .6, 'sawtooth', .2, -260); }
 };
+
+/* ---------------- chiptune music (evolves per phase) ---------------- */
+function note(n, when, dur, wave, vol) {
+  const a = actx();
+  if (!a || muted) return;
+  const f = 440 * Math.pow(2, (n - 69) / 12);
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = wave; o.frequency.value = f;
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.linearRampToValueAtTime(vol, when + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+  o.connect(g); g.connect(a.destination);
+  o.start(when); o.stop(when + dur + 0.05);
+}
+const MUSIC = [
+  { bpm: 96, spc: 16, chords: [[57,60,64,67],[53,57,60,64],[48,52,55,59],[53,57,60,64]], bassEvery: 8, leadWave: 'triangle', bassWave: 'sine', oct2: false },
+  { bpm: 132, spc: 16, chords: [[57,60,64],[55,59,62],[53,57,60],[52,56,59]], bassEvery: 2, leadWave: 'square', bassWave: 'triangle', oct2: false },
+  { bpm: 163, spc: 8, chords: [[52,55,59,64],[48,52,55,60],[50,53,57,62],[52,56,59,64]], bassEvery: 2, leadWave: 'sawtooth', bassWave: 'square', oct2: true }
+];
+let mStep = 0, mNext = 0, mTimer = null;
+function schedMusic() {
+  const a = AC;
+  if (!a) return;
+  if (muted || state !== 'play') { mNext = a.currentTime + 0.12; return; }
+  const m = MUSIC[(phaseOf(t) || 1) - 1];
+  const spb = 60 / m.bpm / 4;
+  if (mNext < a.currentTime) mNext = a.currentTime + 0.05;
+  while (mNext < a.currentTime + 0.2) {
+    const ch = m.chords[Math.floor(mStep / m.spc) % m.chords.length];
+    const s = mStep % m.spc;
+    if (s % m.bassEvery === 0) note(ch[0] - 12, mNext, spb * m.bassEvery * 0.95, m.bassWave, 0.055);
+    note(ch[s % ch.length] + 12, mNext, spb * 0.85, m.leadWave, m.oct2 ? 0.032 : 0.04);
+    if (m.oct2 && s % 2 === 1) note(ch[s % ch.length] + 24, mNext, spb * 0.7, 'square', 0.022);
+    mStep++; mNext += spb;
+  }
+}
+function startMusic() {
+  mStep = 0;
+  const a = actx();
+  if (!a) return;
+  mNext = a.currentTime + 0.15;
+  if (!mTimer) mTimer = setInterval(schedMusic, 70);
+}
+function stopMusic() { if (mTimer) { clearInterval(mTimer); mTimer = null; } }
 
 /* ---------------- pixel sprite helpers ---------------- */
 function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
@@ -197,18 +242,58 @@ const alienSpr = sprite([
   '..GGGGGGGG..',
   '...GGGGGG...'
 ], { G: '#7ae07a', K: '#101410' });
+const mushroomSpr = sprite([
+  '...RRRR...',
+  '..RRRRRR..',
+  '.RWWRRWWR.',
+  'RRWWRRWWRR',
+  'RRRRRRRRRR',
+  '..SSSSSS..',
+  '..SKSSKS..',
+  '..SSSSSS..'
+], { R: '#e04040', W: '#f0f0f0', S: '#e8d8b0', K: '#3a2a1a' });
+const pizzaSpr = sprite([
+  'DDDDDDDDDDDD',
+  '.DYYRRYRYYY.',
+  '..DYRYRYYY..',
+  '...DYRYYY...',
+  '....DYRY....',
+  '.....DY.....',
+  '......D.....'
+], { D: '#d89040', Y: '#f0c040', R: '#d04040' });
 const EGGS_A = [
-  { name: 'A LOST ASTRONAUT', spr: astro2, r: 5 },
-  { name: 'A SPACE SQUIRREL', spr: squirrelSpr, r: 5.5 },
-  { name: 'A SPACE GIRAFFE', spr: giraffeSpr, r: 6 },
-  { name: 'A RUBBER DUCK', spr: duckSpr, r: 5 }
+  { name: 'A LOST ASTRONAUT', spr: astro2, r: 5, value: 600000 },
+  { name: 'A SPACE SQUIRREL', spr: squirrelSpr, r: 5.5, value: 600000 },
+  { name: 'A SPACE GIRAFFE', spr: giraffeSpr, r: 6, value: 600000 },
+  { name: 'A RUBBER DUCK', spr: duckSpr, r: 5, value: 600000 },
+  { name: 'A MAGIC MUSHROOM', spr: mushroomSpr, r: 5, value: 600000 },
+  { name: 'A SPACE PIZZA', spr: pizzaSpr, r: 5.5, value: 600000 }
 ];
 const EGGS_B = [
-  { name: 'A TESLA ROADSTER', spr: teslaSpr, r: 6.5 },
-  { name: 'THE ISS', spr: issSpr, r: 7 },
-  { name: 'THE EIFFEL TOWER', spr: eiffelSpr, r: 6 },
-  { name: 'AN ALIEN', spr: alienSpr, r: 5.5 }
+  { name: 'A TESLA ROADSTER', spr: teslaSpr, r: 6.5, value: 2000000 },
+  { name: 'THE ISS', spr: issSpr, r: 7, value: 2000000 },
+  { name: 'THE EIFFEL TOWER', spr: eiffelSpr, r: 6, value: 2000000 },
+  { name: 'AN ALIEN', spr: alienSpr, r: 5.5, value: 2000000 }
 ];
+
+/* ---------------- collectible gems ---------------- */
+const GEM_SHAPES = [
+  ['...C...','..CWC..','.CWCCC.','CCCCCCC','.CCCCC.','..CCC..','...C...'],
+  ['...CCC...','..CCCCC..','.CCCCCCC.','.CCCCCCC.','..CCCCC..','...CCC...'],
+  ['....C....','...CCC...','...CCC...','..CCCCC..','..CCCCC..','.CCCCCCC.','.CCCCCCC.','CCCCCCCCC']
+];
+const GEM_COLS = ['#5fd8ff', '#ffd24a', '#ff6ad5', '#7aff9a', '#ffa04a', '#c0a0ff'];
+const GEMS = [];
+for (let i = 0; i < 6; i++) GEMS.push(sprite(GEM_SHAPES[i % 3], { C: GEM_COLS[i], W: '#f0ffff' }));
+
+/* ---------------- speaker icon ---------------- */
+const speakerSpr = sprite([
+  '...X..',
+  '..XX..',
+  'XXXX..',
+  '..XX..',
+  '...X..'
+], { X: '#cfd3ff' });
 
 /* ---------------- rock / planet generators ---------------- */
 function makeRock(size) {
