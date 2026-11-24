@@ -4,7 +4,7 @@ A minimal retro 90's-style pixel web game. Open `index.html` in any browser — 
 
 ## How to play
 - **Arrow keys**: move the astronaut (laptop/desktop)
-- **Touch**: drag anywhere to move — the astronaut follows above your finger (phones/tablets); tap to start/retry
+- **Touch**: drag anywhere to move — the astronaut floats above your finger, and the lift automatically grows with your finger's contact size, so thumbs and angled fingers never hide it (phones/tablets); tap to start/retry
 - **Enter / Space**: start or retry
 - **M / speaker icon** (top-right): toggle all audio
 

@@ -30,23 +30,33 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { keys[e.key] = false; });
 
 /* ---------------- touch controls ---------------- */
-let touchX = 0, touchY = 0, touchActive = false;
-const TOUCH_OFF = Math.round(H * 0.09);
+let touchX = 0, touchY = 0, touchActive = false, tOff = 0;
+const BASE_OFF = Math.round(H * 0.09);
+function touchOffset(tch) {
+  const r = cv.getBoundingClientRect();
+  const s = r.height / H || 1;
+  const pad = ((tch.radiusY || 0) * 2.5 + 20) / s;
+  return Math.max(BASE_OFF, pad);
+}
 function canvasPos(e) {
   const r = cv.getBoundingClientRect();
   return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
 }
 cv.addEventListener('touchstart', e => {
   e.preventDefault();
-  const p = canvasPos(e.touches[0]);
+  const tch = e.touches[0];
+  const p = canvasPos(tch);
   if (p.x >= W - 16 && p.y <= 14) { muted = !muted; return; }
   if (state === 'title' || (state === 'over' && overT > 0.6)) { start(); return; }
-  touchX = p.x; touchY = p.y - TOUCH_OFF; touchActive = true;
+  tOff = touchOffset(tch);
+  touchX = p.x; touchY = p.y - tOff; touchActive = true;
 }, { passive: false });
 cv.addEventListener('touchmove', e => {
   e.preventDefault();
-  const p = canvasPos(e.touches[0]);
-  touchX = p.x; touchY = p.y - TOUCH_OFF;
+  const tch = e.touches[0];
+  const p = canvasPos(tch);
+  tOff = touchOffset(tch);
+  touchX = p.x; touchY = p.y - tOff;
 }, { passive: false });
 cv.addEventListener('touchend', e => {
   e.preventDefault();
@@ -266,7 +276,7 @@ function draw() {
 
   if (touchActive && state === 'play') {
     ctx.fillStyle = 'rgba(140,220,255,0.55)';
-    ctx.fillRect(Math.round(touchX) - 1, Math.round(touchY + TOUCH_OFF) - 1, 3, 3);
+    ctx.fillRect(Math.round(touchX) - 1, Math.round(touchY + tOff) - 1, 3, 3);
   }
 
   if (state === 'play' && (invul <= 0 || Math.floor(timeAbs * 10) % 2 === 0)) {
